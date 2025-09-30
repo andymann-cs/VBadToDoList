@@ -1,0 +1,114 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name = "viewport" content="width=device-width, initial-scale = 1.0">
+    <title> most basic to do list </title>
+    <link rel="stylesheet" type="text/css" href="toDoStyle.css">
+</head>
+<body>
+    <div class = "container">
+     <h1> Todo List </h1>
+
+     <!-- textbox -->
+     <input type="text" id = "newItem" placeholder="Enter task">
+     <button onclick="addItem()"> Add </button>
+     <ul id = "todoList"></ul>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        // load saved todos from mongoDB
+        async function fetchTodos() { 
+            const response = await fetch(`${API_URL}/todos`);
+            const todos = await response.json();
+            const list = document.getElementById('todoList');
+            list.innerHTML = '';
+
+            todos.forEach(todo => {
+                const li = document.createElement('li');
+                li.id = todo._id;
+
+                const span = document.createElement('span');
+                span.textContent = todo.content;
+
+                if(todo.finished){
+                    span.classList.add("strikeOut"); 
+                }
+                
+                const groupBtns = document.createElement('div');
+                groupBtns.classList.add('btn-group');
+
+                const finishedBtn = document.createElement('button');
+                finishedBtn.textContent = 'Finished?';
+                finishedBtn.onclick = () => toggleFinishedAndStrikeout(todo._id);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteItem(todo._id);
+
+                groupBtns.appendChild(finishedBtn);
+                groupBtns.appendChild(deleteBtn);
+
+                li.appendChild(span);
+                li.appendChild(groupBtns);
+                list.appendChild(li);
+            });
+        }
+
+        async function addItem() {
+            const input = document.getElementById('newItem');
+            if (input.value.trim() !== '') {
+                const response = await fetch(`${API_URL}/todos`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({content: input.value}),    
+                });
+                if (response.ok) {
+                    input.value = '';
+                    fetchTodos();
+                }
+            }
+        }
+
+        async function deleteItem(id) {
+            const response = await fetch(`${API_URL}/todos/${id}`, {
+                method: 'DELETE',
+            });
+            if (response.ok) {
+                fetchTodos();
+            }
+        }
+
+
+        async function strikeOutItem(id){
+            const item = document.getElementById(id);
+            item.classList.toggle("strikeOut")
+        }
+            
+        async function toggleFinishedAndStrikeout(id) {
+            const item = document.getElementById(id);
+            const span = item.querySelector('span');
+            const isStruck = span.classList.toggle("strikeOut")
+            
+            const response = await fetch(`${API_URL}/todos/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ strikethrough: isStruck })
+            });
+            
+            if (response.ok) {
+                fetchTodos();
+            }
+            
+        }
+
+
+        fetchTodos();
+        
+    </script>
+</body>
+</html>
